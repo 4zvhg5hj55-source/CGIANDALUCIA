@@ -1,0 +1,83 @@
+CGI Andalucía RP - versión Cloudflare Workers  (v2.3)
+=====================================================
+Usuario inicial:  dev
+Contraseña inicial: la del apartado «CONTRASEÑA DE dev» (te obliga a cambiarla en el primer acceso)
+
+NOVEDADES v2.3
+  Contraseñas: NADIE puede verlas (ni el Desarrollador). Un Desarrollador puede RESTABLECER la de cualquier perfil (genera una provisional que se muestra una sola vez).
+  Toda cuenta nueva, o con contraseña restablecida/puesta por un administrador, debe cambiarla en su primer acceso.
+  IP de los logs y sesiones: NUNCA se guarda la real; solo un código (IP-XXXXXXXXXX) que permite reconocer actividad desde la misma red sin poder recuperar la IP.
+  Inactividad: mínimo 3 h de servicio por semana (lunes a domingo). Aviso en «Mi servicio», marca «Inactivo» y filtro en Equipo y horas, y aviso semanal a Discord.
+  Tareas: un superior puede DEVOLVER una tarea completada con un MOTIVO obligatorio (y nuevo plazo); la persona lo ve y la tarea guarda su historial.
+  Historial de versiones con diferencias y «Restaurar» en notas (ahora editables), informes, fichas, datos y personas de investigaciones.
+
+NOVEDADES v2.2
+  Notas e informes con NIVELES (1 todos los miembros · 2 Analista+ · 3 Coordinador+), filtro por nivel y acceso especial a personas concretas.
+  Notas e informes asociables a investigaciones: quien pueda ver la investigación, ve el documento.
+  Investigaciones rediseñadas (fases, equipo, datos clave, personas, fichas, informes, notas, cronología) y archivo automático a los 30 días de cerrarse.
+  Base de datos enlazada con las investigaciones (vincular fichas / crear ficha desde una persona: solo copia nombre y fotos).
+  ACTIVIDAD: iniciar y finalizar servicio, horas de hoy / semana / mes / total, y TAREAS con plazo.
+     · Coordinador o superior: encarga tareas a rangos inferiores, ve las horas y las tareas de todo el equipo, corrige turnos y descarga un CSV.
+     · Se registra cada tarea enviada, completada (en plazo o fuera de plazo), no completada y cancelada.
+  Búsqueda global (Ctrl+K), copias y restauración, avisos a Discord (documentos de Nivel 3, accesos especiales, restauraciones).
+  Modo claro y oscuro, contraseña visible al iniciar sesión, sesiones activas con «cerrar las demás», rediseño profesional.
+  Títulos DAO y Co-Desarrollador con rango CGI opcional; modo desarrollador para Desarrollador y Co-Desarrollador.
+
+DESPLIEGUE NUEVO (una sola vez; Node.js 18+ y cuenta de Cloudflare)
+  1. Descomprime el zip y abre una terminal en la carpeta.   2. npm install
+  3. (Recomendado) npx wrangler secret put DEV_PASS          -> escribe la contraseña que quieras para la cuenta dev
+  4. npx wrangler login   5. npx wrangler deploy
+  Si no defines DEV_PASS, la contraseña inicial de dev es  CGI-Dev#2026!Atlas  y la web te obliga a cambiarla al entrar.
+
+ACTUALIZAR UNA WEB YA DESPLEGADA SIN PERDER NINGÚN DATO
+  Los datos viven en la base de datos del Durable Object y NO se tocan al redesplegar mientras no cambies en wrangler.jsonc:
+     name = "cgi-andaluciarp"  ·  class_name = "CGI"  ·  migrations (tag "v1")      (en este zip está IDÉNTICO al anterior)
+  1. COPIA DE SEGURIDAD: entra como dev > «Modo desarrollador» > Copias y restauración > Descargar copia (.json). Guárdala.
+  2. Sustituye en tu carpeta  src/ , public/ , package.json y LEEME.txt  por los de este zip.  NO sustituyas wrangler.jsonc.
+  3. npx wrangler deploy
+  4. Entra. Los datos antiguos se migran solos al arrancar (nada se borra):
+       notas «Reservado» -> Nivel 1 · «Confidencial» -> Nivel 3 · «Secreto» -> Nivel 3 con límite Secretario General o superior
+       informes existentes -> Nivel 3 (como funcionaban) · accesos «compartidos» conservados
+  5. Si tu cuenta dev aún tiene la contraseña del LEEME, al entrar te pedirá cambiarla.
+  Al arrancar con esta versión: las IP reales de logs y sesiones antiguas se convierten a código y se elimina cualquier contraseña cifrada recuperable de versiones anteriores.
+  Las cuentas existentes NO quedan obligadas a cambiar la contraseña (solo las nuevas o restablecidas).
+  No pongas la variable CGI_KEY salvo que quieras: solo afecta a los códigos de IP (cambiarla hace que los nuevos códigos sean distintos de los anteriores).
+  El Rollback de Cloudflare es seguro: los datos nuevos son compatibles hacia atrás y las notas siguen igual de protegidas.
+
+CONTRASEÑA DE dev
+  - Secreto de Cloudflare  DEV_PASS : se usa al crear la cuenta dev (y con DEV_RESET). No queda escrita en el código ni en el LEEME.
+  - Si la cuenta dev sigue con la contraseña por defecto, queda bloqueada hasta que la cambie.
+  - Nadie puede ver contraseñas. Para dar acceso a alguien que la olvidó: Panel Desarrollador > perfil > Restablecer contraseña (se muestra una sola vez).
+  - Un Co-Desarrollador puede restablecer la de cualquiera salvo la de cuentas Desarrollador. Nadie puede restablecerse la suya (usa Mi cuenta).
+  - Si pierdes el acceso: wrangler.jsonc > "vars": { "DEV_RESET": "1" } > deploy > entra > quita la línea y vuelve a desplegar.
+
+BASE DE DATOS
+  Una tabla «items» dentro del Durable Object (SQLite): cada usuario, nota, informe, investigación, ficha, turno o tarea es una fila JSON.
+  Campos nuevos van dentro del JSON (no cambia el esquema). Tablas nuevas, creadas solas: «snaps» y «snapmeta» (puntos de restauración).
+
+COPIAS Y RESTAURACIÓN (Copias y restauración, solo Desarrollador / Co-Desarrollador con el modo activo)
+  - Cada día, una alarma del propio Durable Object guarda un punto de restauración si hubo actividad (se conservan 7 automáticos, 6 manuales y 4 de seguridad).
+  - Restaurar desde un punto o desde un archivo .json; siempre guarda antes un punto de seguridad (se puede deshacer).
+  - Copia externa diaria a R2 (OPCIONAL): npx wrangler r2 bucket create cgi-backups, descomenta la línea r2_buckets de wrangler.jsonc y despliega.
+
+ACTIVIDAD
+  - Las horas se reparten por día natural en horario de España. Un servicio olvidado se cierra solo a las 12 h (queda marcado como automático).
+  - Un Coordinador encarga tareas a Alumno y Analista; un Secretario General hasta Coordinador; Comisario General hasta Secretario General;
+    FL / DAO y Desarrollador (modo activo) a todos. Igual regla para corregir turnos o cerrar el servicio de alguien.
+  - Una tarea cuyo plazo vence pasa sola a «No completada»; aun así se puede completar y queda como «fuera de plazo».
+  - Inactivo = menos de 3 h en la semana anterior. No se marca a cuentas suspendidas ni a quien se incorporó esa semana.
+    El aviso semanal a Discord sale una vez por semana (si hay webhook en Ajustes) y solo si alguien no llegó al mínimo.
+  - Devolver una tarea (botón «Devolver» en Tareas del equipo): motivo obligatorio; si el plazo ya venció hay que indicar uno nuevo.
+
+SEGURIDAD
+  - Mi cuenta > sesiones activas con IP y navegador; «Cerrar las demás sesiones». Cambiar la contraseña cierra el resto de sesiones.
+  - Comisario General o superior puede cerrar todas las sesiones de un subordinado desde su perfil.
+  - Un Co-Desarrollador no puede gestionar cuentas Desarrollador ni restablecer su contraseña.
+  - Las copias de seguridad contienen el hash de las contraseñas (no recuperable) pero ninguna IP real.
+
+HISTORIAL DE VERSIONES
+  Se guardan hasta 30 versiones anteriores de cada nota, informe, ficha, dato y persona. Solo las ven quienes pueden editar. Las fotos no se versionan.
+  Editan: el autor o un Coordinador o superior (notas e informes); Analista o superior (fichas); equipo de la investigación (datos y personas).
+
+NOTA SOBRE LAS FOTOS
+  Las fotos se comprimen en el navegador (máx. 1280 px, JPEG 80 %) y se guardan dentro de la base de datos. El panel de copias muestra cuánto ocupa cada cosa.
